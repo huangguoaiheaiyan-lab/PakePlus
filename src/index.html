@@ -1,32 +1,1801 @@
-<!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <link rel="stylesheet" href="styles.css" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus App</title>
-        <script type="module" src="/main.js" defer></script>
-    </head>
+<html lang="zh-CN"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>关键词计划地域优化工具</title>
+    <!-- 引入SheetJS库用于处理Excel文件 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- 引入FileSaver.js库用于文件导出 -->
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    <!-- 引入Font Awesome图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-tertiary: #94a3b8;
+            --accent-red: #ef4444;
+            --accent-blue: #3b82f6;
+            --accent-blue-light: #eff6ff;
+            --accent-green: #10b981;
+            --table-header: #f1f5f9;
+            --table-row-alt: #f8fafc;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-hover: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.2s ease;
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --border-radius: 8px;
+        }
 
-    <body>
-        <main class="container">
-            <h1>Welcome to PakePlus</h1>
-            <form class="row" id="greet-form">
-                <input id="inputValue" placeholder="Enter a something..." />
-            </form>
-            <div class="resultBox">
-                <span>result: </span>
-                <span id="result"></span>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.5;
+            padding: 0;
+            font-size: 14px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-md);
+        }
+
+        /* 顶部导航栏 */
+        header {
+            background-color: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: var(--spacing-md) 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+            background-color: rgba(255, 255, 255, 0.95);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-group {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .logo-icon {
+            color: var(--accent-blue);
+            font-size: 22px;
+        }
+
+        h1 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .header-description {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-top: 2px;
+        }
+
+        .controls {
+            display: flex;
+            gap: var(--spacing-md);
+        }
+
+        .btn {
+            background-color: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: var(--border-radius);
+            font-size: 14px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            font-weight: 500;
+        }
+
+        .btn:hover {
+            background-color: #2563eb;
+            box-shadow: 0 2px 5px rgba(59, 130, 246, 0.2);
+        }
+
+        .btn-upload {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-upload input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .btn-export {
+            background-color: var(--accent-green);
+        }
+
+        .btn-export:hover {
+            background-color: #059669;
+            box-shadow: 0 2px 5px rgba(16, 185, 129, 0.2);
+        }
+
+        /* 主内容区 */
+        .main-content {
+            padding: var(--spacing-lg) 0;
+        }
+
+        /* 初始状态和加载状态 */
+        .initial-state {
+            text-align: center;
+            padding: var(--spacing-xl) var(--spacing-md);
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-bottom: var(--spacing-lg);
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .initial-state i {
+            font-size: 48px;
+            color: var(--accent-blue);
+            opacity: 0.2;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .initial-state h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: var(--spacing-sm);
+            color: var(--text-primary);
+        }
+
+        .initial-state p {
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .requirements {
+            font-size: 13px;
+            color: var(--text-secondary);
+            background-color: var(--table-header);
+            padding: var(--spacing-md);
+            border-radius: var(--border-radius);
+            text-align: left;
+            display: inline-block;
+            margin-top: var(--spacing-sm);
+        }
+
+        .requirements strong {
+            display: block;
+            margin-bottom: var(--spacing-xs);
+            color: var(--text-primary);
+        }
+
+        .requirements ul {
+            list-style-type: none;
+        }
+
+        .requirements li {
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .requirements li:before {
+            content: "•";
+            color: var(--accent-blue);
+            font-size: 16px;
+        }
+
+        #loading {
+            display: none;
+            text-align: center;
+            padding: var(--spacing-xl) 0;
+        }
+
+        #loading i {
+            font-size: 36px;
+            color: var(--accent-blue);
+            animation: spin 1.5s linear infinite;
+            margin-bottom: var(--spacing-md);
+        }
+
+        #loading p {
+            color: var(--text-secondary);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 数据概览区 */
+        .stats-section {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .section-title i {
+            color: var(--accent-blue);
+        }
+
+        .section-description {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: var(--spacing-md);
+        }
+
+        .stat-card {
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-md);
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            border-top: 3px solid var(--accent-blue);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .stat-card.danger {
+            border-top-color: var(--accent-red);
+        }
+
+        .stat-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .stat-icon {
+            color: var(--accent-blue);
+            opacity: 0.7;
+        }
+
+        .stat-card.danger .stat-icon {
+            color: var(--accent-red);
+        }
+
+        .stat-value {
+            font-size: 26px;
+            font-weight: 600;
+            line-height: 1.2;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .stat-card.danger .stat-value {
+            color: var(--accent-red);
+        }
+
+        .stat-info {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        /* 数据分析区 */
+        .analysis-section {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: var(--spacing-lg);
+        }
+
+        @media (max-width: 1200px) {
+            .data-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .data-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .data-card {
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .data-card-header {
+            padding: var(--spacing-md);
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--table-header);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .data-card-title {
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .data-card-title i {
+            color: var(--accent-blue);
+            font-size: 15px;
+        }
+
+        .data-card-description {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .copy-btn {
+            background-color: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .copy-btn:hover {
+            background-color: #2563eb;
+        }
+
+        .copy-btn.copied {
+            background-color: var(--accent-green);
+        }
+
+        /* 复制成功提示 */
+        .copy-toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--accent-green);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .copy-toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .table-container {
+            flex: 1;
+            overflow: auto;
+            min-height: 300px;
+            max-height: 600px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        th {
+            background-color: var(--table-header);
+            color: var(--text-secondary);
+            font-weight: 500;
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 11px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        tr:hover td {
+            background-color: var(--accent-blue-light);
+        }
+
+        tr:nth-child(even) td {
+            background-color: var(--table-row-alt);
+        }
+
+        tr:nth-child(even):hover td {
+            background-color: var(--accent-blue-light);
+        }
+
+        .selected td {
+            background-color: rgba(59, 130, 246, 0.1);
+            color: var(--accent-blue);
+            font-weight: 500;
+        }
+
+        .all-zero-roi {
+            color: var(--accent-red);
+            font-weight: 500;
+        }
+
+        /* 0投产比城市高亮样式 */
+        .zero-roi-city td {
+            color: var(--accent-red);
+            font-weight: 500;
+        }
+        
+        .zero-roi-city:hover td {
+            background-color: rgba(239, 68, 68, 0.08);
+        }
+        
+        .zero-roi-city.selected td {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--accent-red);
+        }
+
+        /* 计划花费标签样式 */
+        .plan-cost-badge {
+            display: inline-block;
+            background-color: var(--accent-blue-light);
+            color: var(--accent-blue);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-right: 6px;
+            min-width: 70px;
+            text-align: right;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-tertiary);
+            font-size: 14px;
+        }
+
+        .no-data i {
+            font-size: 28px;
+            margin-bottom: var(--spacing-sm);
+            opacity: 0.4;
+            color: var(--text-tertiary);
+        }
+
+        /* 模态框样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            width: 96%;
+            max-width: 1400px;
+            max-height: 90vh;
+            overflow: hidden;
+            transform: translateY(10px);
+            transition: transform 0.2s ease;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-overlay.active .modal {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            padding: var(--spacing-md);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--table-header);
+        }
+
+        .modal-title {
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .modal-title i {
+            color: var(--accent-blue);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .modal-body {
+            padding: 0;
+            height: calc(90vh - 55px);
+            overflow: hidden;
+        }
+
+        /* 详情表格样式 */
+        .detail-table-wrapper {
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            cursor: grab;
+            position: relative;
+            user-select: none;
+        }
+
+        .detail-table-wrapper.grabbing {
+            cursor: grabbing;
+        }
+
+        .detail-table {
+            min-width: 100%;
+            table-layout: auto;
+        }
+
+        .detail-table th {
+            position: sticky;
+            top: 0;
+            left: 0;
+            z-index: 20;
+            background-color: var(--table-header);
+            border-right: 1px solid var(--border-color);
+            font-size: 12px;
+            padding: 10px 12px;
+            color: var(--text-secondary);
+        }
+
+        .detail-table th:not(:first-child) {
+            left: auto;
+            z-index: 15;
+        }
+
+        .detail-table th:last-child {
+            border-right: none;
+        }
+
+        .detail-table td {
+            padding: 10px 12px;
+            font-size: 12px;
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            cursor: default;
+            color: var(--text-primary);
+        }
+
+        .detail-table td:first-child,
+        .detail-table th:first-child {
+            position: sticky;
+            left: 0;
+            background-color: var(--card-bg);
+            z-index: 15;
+            font-weight: 500;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .detail-table th:first-child {
+            background-color: var(--table-header);
+            z-index: 25;
+        }
+
+        .detail-table tr:nth-child(even) td {
+            background-color: var(--table-row-alt);
+        }
+
+        .detail-table tr:hover td {
+            background-color: var(--accent-blue-light);
+            color: var(--accent-blue);
+        }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* 数据验证提示 */
+        .validation-badge {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 10px;
+            font-size: 11px;
+            margin-left: 6px;
+            background-color: var(--accent-blue-light);
+            color: var(--accent-blue);
+            font-weight: 500;
+        }
+
+        /* 响应式适配 */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--spacing-md);
+            }
+            
+            .controls {
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            .btn {
+                padding: 7px 12px;
+                font-size: 13px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .stat-value {
+                font-size: 22px;
+            }
+            
+            .plan-cost-badge {
+                min-width: 60px;
+                padding: 1px 4px;
+                margin-right: 4px;
+                font-size: 11px;
+            }
+            
+            .table-container {
+                min-height: 250px;
+                max-height: 400px;
+            }
+            
+            .modal {
+                max-height: 85vh;
+            }
+            
+            .modal-body {
+                height: calc(85vh - 55px);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                flex-direction: column;
+                gap: var(--spacing-sm);
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .main-content {
+                padding: var(--spacing-md) 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 复制成功提示框 -->
+    <div class="copy-toast" id="copyToast">
+        <i class="fas fa-check-circle"></i>
+        <span>计划ID已成功复制到剪贴板</span>
+    </div>
+
+    <header>
+        <div class="container header-content">
+            <div>
+                <div class="logo-group">
+                    <i class="fas fa-chart-pie logo-icon"></i>
+                    <h1>关键词计划地域优化工具</h1>
+                </div>
+                <div class="header-description">精准分析广告投放数据，优化地域投放策略</div>
             </div>
-            <div class="invokeBox">
-                <button id="openUrl">open_url_browser</button>
-                <button id="openUrlNew">open_url_new</button>
-                <button id="runCommand">run_command</button>
-                <button id="downloadFile">download_file</button>
-                <button id="getExeDir">get_exe_dir</button>
-                <button id="getEnvVar">get_env_var</button>
-                <button id="findPort">find_port</button>
+            <div class="controls">
+                <button class="btn btn-upload">
+                    <i class="fas fa-upload"></i> 上传Excel文件
+                    <input type="file" id="fileUpload" accept=".xlsx, .xls">
+                </button>
+                <button class="btn btn-export" id="exportBtn" disabled="">
+                    <i class="fas fa-download"></i> 导出优化建议
+                </button>
             </div>
-        </main>
-    </body>
-</html>
+        </div>
+    </header>
+
+    <div class="container main-content">
+        <!-- 初始提示信息 -->
+        <div id="initialMessage" class="initial-state">
+            <i class="fas fa-file-excel"></i>
+            <h3>上传广告投放数据开始分析</h3>
+            <p>通过本工具可以快速识别0投产比的省份、城市和计划，优化您的广告投放策略</p>
+            <div class="requirements">
+                <strong>文件需包含以下列：</strong>
+                <ul>
+                    <li>计划ID</li>
+                    <li>省</li>
+                    <li>市</li>
+                    <li>花费</li>
+                    <li>投入产出比</li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="loading">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>正在处理数据，请稍候...</p>
+        </div>
+
+        <!-- 数据统计部分 -->
+        <section class="stats-section" id="statsSection" style="display: none;">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">
+                        <i class="fas fa-chart-bar"></i> 数据概览
+                    </h2>
+                    <p class="section-description">关键指标一览，帮助您快速了解整体投放情况</p>
+                </div>
+            </div>
+            <div class="stats-grid" id="statsCards">
+                <div class="stat-card">
+                    <div class="stat-meta">
+                        <div class="stat-label">总省份数</div>
+                        <i class="fas fa-map-marker-alt stat-icon"></i>
+                    </div>
+                    <div class="stat-value" id="totalProvinces">0</div>
+                    <div class="stat-info">分析覆盖的所有省份数量</div>
+                </div>
+                <div class="stat-card danger">
+                    <div class="stat-meta">
+                        <div class="stat-label">全零ROI省份数</div>
+                        <i class="fas fa-exclamation-circle stat-icon"></i>
+                    </div>
+                    <div class="stat-value" id="zeroRoiProvinces">0</div>
+                    <div class="stat-info">该省份所有城市ROI均为0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-meta">
+                        <div class="stat-label">问题城市总数</div>
+                        <i class="fas fa-city stat-icon"></i>
+                    </div>
+                    <div class="stat-value" id="totalProblemCities">0</div>
+                    <div class="stat-info">存在0投产比计划的城市数量</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-meta">
+                        <div class="stat-label">问题计划总数</div>
+                        <i class="fas fa-tasks stat-icon"></i>
+                    </div>
+                    <div class="stat-value" id="totalProblemPlans">0</div>
+                    <div class="stat-info">投入产出比为0的计划总数</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 数据分析区 -->
+        <section class="analysis-section" id="analysisResults" style="display: none;">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">
+                        <i class="fas fa-search"></i> 数据分析
+                    </h2>
+                    <p class="section-description">按省份 → 城市 → 计划ID的层级查看详细数据，点击项目可查看下一级详情</p>
+                </div>
+            </div>
+            <div class="data-grid">
+                <!-- 0投产比省份列表 -->
+                <div class="data-card">
+                    <div class="data-card-header">
+                        <h3 class="data-card-title">
+                            <i class="fas fa-map"></i> 0投产比省份列表
+                        </h3>
+                        <p class="data-card-description">红色显示的为整个省份所有城市ROI均为0，建议评估该省份整体投放策略</p>
+                    </div>
+                    <div class="table-container">
+                        <table id="provinceTable">
+                            <thead>
+                                <tr>
+                                    <th>省份</th>
+                                    <th>0投产比城市数量</th>
+                                </tr>
+                            </thead>
+                            <tbody id="provinceTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 0投产比城市列表 -->
+                <div class="data-card">
+                    <div class="data-card-header">
+                        <h3 class="data-card-title">
+                            <i class="fas fa-map-pin"></i> 0投产比城市列表
+                        </h3>
+                        <p class="data-card-description">红色显示的为投入产出比为0的城市，点击查看该城市的问题计划</p>
+                    </div>
+                    <div class="table-container">
+                        <table id="cityTable">
+                            <thead>
+                                <tr>
+                                    <th>市</th>
+                                    <th>总花费</th>
+                                    <th>投入产出比</th>
+                                    <th>问题计划数量</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cityTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 计划ID列表 -->
+                <div class="data-card">
+                    <div class="data-card-header">
+                        <div class="header-actions">
+                            <h3 class="data-card-title">
+                                <i class="fas fa-list-check"></i> 计划ID列表
+                            </h3>
+                            <button class="copy-btn" id="copyIdsBtn" disabled="">
+                                <i class="fas fa-copy"></i> 复制所有ID
+                            </button>
+                        </div>
+                        <p class="data-card-description">计划ID前显示该计划在当前城市的总花费 <span class="validation-badge">按花费降序</span></p>
+                    </div>
+                    <div class="table-container">
+                        <table id="planTable">
+                            <thead>
+                                <tr>
+                                    <th>计划ID</th>
+                                    <th>花费</th>
+                                    <th>投入产出比</th>
+                                </tr>
+                            </thead>
+                            <tbody id="planTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- 计划详情二级菜单（模态框） -->
+    <div class="modal-overlay" id="detailModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle"><i class="fas fa-table"></i> 计划原始数据</h3>
+                <button class="modal-close" id="modalClose">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-table-wrapper" id="detailTableWrapper">
+                    <table class="detail-table" id="detailTable">
+                        <thead id="detailTableHeader"></thead>
+                        <tbody id="detailTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量 - 采用严格的三级数据结构
+        let dataStore = {
+            provinces: {},       // 省份数据 { 省份名: { cities: {}, ... } }
+            allData: []          // 原始数据备份
+        };
+        let currentSelection = {
+            province: null,      // 当前选中省份
+            city: null,          // 当前选中城市
+            plan: null           // 当前选中计划ID
+        };
+        let stats = {
+            totalProvinces: 0,
+            zeroRoiProvinces: 0,
+            totalProblemCities: 0,
+            totalProblemPlans: 0
+        };
+        // 存储当前显示的计划ID列表，用于复制功能
+        let currentPlanIds = [];
+        
+        // DOM元素
+        const fileUpload = document.getElementById('fileUpload');
+        const exportBtn = document.getElementById('exportBtn');
+        const loading = document.getElementById('loading');
+        const analysisResults = document.getElementById('analysisResults');
+        const statsSection = document.getElementById('statsSection');
+        const statsCards = document.getElementById('statsCards');
+        const initialMessage = document.getElementById('initialMessage');
+        const provinceTableBody = document.getElementById('provinceTableBody');
+        const cityTableBody = document.getElementById('cityTableBody');
+        const planTableBody = document.getElementById('planTableBody');
+        const detailModal = document.getElementById('detailModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalClose = document.getElementById('modalClose');
+        const detailTableHeader = document.getElementById('detailTableHeader');
+        const detailTableBody = document.getElementById('detailTableBody');
+        const copyIdsBtn = document.getElementById('copyIdsBtn');
+        const copyToast = document.getElementById('copyToast');
+        let detailTableWrapper = document.getElementById('detailTableWrapper');
+
+        // 统计数据元素
+        const totalProvincesEl = document.getElementById('totalProvinces');
+        const zeroRoiProvincesEl = document.getElementById('zeroRoiProvinces');
+        const totalProblemCitiesEl = document.getElementById('totalProblemCities');
+        const totalProblemPlansEl = document.getElementById('totalProblemPlans');
+
+        // 事件监听
+        fileUpload.addEventListener('change', handleFileUpload);
+        exportBtn.addEventListener('click', exportOptimizationSuggestions);
+        modalClose.addEventListener('click', () => detailModal.classList.remove('active'));
+        detailModal.addEventListener('click', (e) => {
+            if (e.target === detailModal) detailModal.classList.remove('active');
+        });
+        // 复制按钮点击事件
+        copyIdsBtn.addEventListener('click', copyAllPlanIds);
+
+        // 处理文件上传
+        function handleFileUpload(e) {
+            try {
+                const file = e.target.files[0];
+                if (!file) {
+                    console.log('未选择文件');
+                    return;
+                }
+
+                // 验证文件格式
+                if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+                    alert('请上传 .xlsx 或 .xls 格式的Excel文件');
+                    return;
+                }
+
+                // 显示加载状态
+                loading.style.display = 'block';
+                initialMessage.style.display = 'none';
+                analysisResults.style.display = 'none';
+                statsSection.style.display = 'none';
+                exportBtn.disabled = true;
+                copyIdsBtn.disabled = true;
+                currentPlanIds = [];
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const rawData = XLSX.utils.sheet_to_json(worksheet);
+                        
+                        // 验证必要列
+                        const requiredColumns = ['计划ID', '省', '市', '花费', '投入产出比'];
+                        const missingColumns = requiredColumns.filter(col => 
+                            !rawData.some(row => row[col] !== undefined)
+                        );
+                        
+                        if (missingColumns.length > 0) {
+                            alert(`Excel文件缺少必要的列：\n${missingColumns.join(', ')}\n\n请确保文件包含以下列：${requiredColumns.join(', ')}`);
+                            resetUI();
+                            return;
+                        }
+                        
+                        // 初始化数据存储
+                        initializeDataStore(rawData);
+                        
+                        // 显示结果
+                        loading.style.display = 'none';
+                        analysisResults.style.display = 'block';
+                        statsSection.style.display = 'block';
+                        exportBtn.disabled = false;
+                        updateStatsDisplay();
+                        
+                        // 重置文件输入，允许重复上传同一文件
+                        fileUpload.value = '';
+                    } catch (error) {
+                        console.error('解析文件时出错:', error);
+                        alert(`解析文件时出错: ${error.message}\n请检查文件格式是否正确`);
+                        resetUI();
+                    }
+                };
+                
+                // 处理文件读取错误
+                reader.onerror = function() {
+                    console.error('文件读取错误:', reader.error);
+                    alert('无法读取文件，请尝试重新上传');
+                    resetUI();
+                };
+                
+                reader.readAsArrayBuffer(file);
+            } catch (error) {
+                console.error('文件上传处理出错:', error);
+                alert('处理文件时发生错误，请重试');
+                resetUI();
+            }
+        }
+
+        // 重置UI到初始状态
+        function resetUI() {
+            loading.style.display = 'none';
+            initialMessage.style.display = 'block';
+            fileUpload.value = '';
+        }
+
+        // 初始化数据存储
+        function initializeDataStore(rawData) {
+            // 重置数据存储
+            dataStore = {
+                provinces: {},
+                allData: [...rawData]
+            };
+            stats = { 
+                totalProvinces: 0, 
+                zeroRoiProvinces: 0, 
+                totalProblemCities: 0, 
+                totalProblemPlans: 0 
+            };
+
+            // 遍历原始数据，构建三级结构
+            rawData.forEach(row => {
+                // 标准化数据
+                const provinceName = normalizeText(row['省'] || '未知省份');
+                const cityName = normalizeText(row['市'] || '未知城市');
+                const planId = row['计划ID'] || '未知ID';
+                const cost = parseNumber(row['花费'], 0);
+                const roi = parseNumber(row['投入产出比'], 0);
+
+                // 1. 初始化省份数据（如果不存在）
+                if (!dataStore.provinces[provinceName]) {
+                    dataStore.provinces[provinceName] = {
+                        name: provinceName,
+                        cities: {},                  // 城市集合
+                        hasNonZeroROICity: false,    // 是否有非零ROI的城市
+                        zeroRoiCityCount: 0          // 零ROI城市数量
+                    };
+                    stats.totalProvinces++;
+                }
+                const province = dataStore.provinces[provinceName];
+
+                // 2. 初始化城市数据（如果不存在）
+                if (!province.cities[cityName]) {
+                    province.cities[cityName] = {
+                        name: cityName,
+                        province: provinceName,
+                        plans: {},                   // 计划集合
+                        totalCost: 0,                // 总花费
+                        totalROI: 0,                 // 总ROI
+                        rowCount: 0,                 // 数据行数
+                        hasNonZeroROI: false,        // 是否有非零ROI的计划
+                        zeroROIPlansCount: 0         // 零ROI计划数量
+                    };
+                }
+                const city = province.cities[cityName];
+
+                // 3. 初始化计划数据（如果不存在）
+                if (!city.plans[planId]) {
+                    city.plans[planId] = {
+                        id: planId,                  // 计划ID
+                        city: cityName,
+                        province: provinceName,
+                        totalCost: 0,                // 总花费（当前城市中该计划的总和）
+                        totalROI: 0,                 // 总ROI
+                        rowCount: 0,                 // 数据行数
+                        details: []                  // 原始数据详情（只存储当前城市的数据）
+                    };
+                }
+                const plan = city.plans[planId];
+
+                // 更新计划数据
+                plan.totalCost += cost;  // 累加计算当前城市中该计划的总花费
+                plan.totalROI += roi;
+                plan.rowCount++;
+                plan.details.push({...row});
+
+                // 更新城市数据
+                city.totalCost += cost;
+                city.totalROI += roi;
+                city.rowCount++;
+
+                // 标记非零ROI
+                if (roi > 0) {
+                    city.hasNonZeroROI = true;
+                    province.hasNonZeroROICity = true;
+                } else if (roi === 0) {
+                    city.zeroROIPlansCount++;
+                }
+            });
+
+            // 后处理：计算统计数据和派生属性
+            Object.values(dataStore.provinces).forEach(province => {
+                let zeroRoiCityCount = 0;
+
+                // 处理每个城市
+                Object.values(province.cities).forEach(city => {
+                    // 计算平均ROI
+                    city.avgROI = city.rowCount > 0 ? city.totalROI / city.rowCount : 0;
+
+                    // 转换计划对象为数组并排序（按花费降序，方便优先查看高花费计划）
+                    city.plansArray = Object.values(city.plans)
+                        .map(plan => ({
+                            ...plan,
+                            avgROI: plan.rowCount > 0 ? plan.totalROI / plan.rowCount : 0
+                        }))
+                        .sort((a, b) => b.totalCost - a.totalCost);
+
+                    // 筛选出0投产比的计划
+                    city.zeroROIPlans = city.plansArray.filter(plan => plan.avgROI === 0);
+
+                    // 判断是否为问题城市
+                    const isProblemCity = city.totalCost > 10 && city.zeroROIPlans.length > 0;
+                    if (isProblemCity) {
+                        zeroRoiCityCount++;
+                        stats.totalProblemCities++;
+                        stats.totalProblemPlans += city.zeroROIPlans.length;
+                    }
+                });
+
+                // 更新省份的零ROI城市数量
+                province.zeroRoiCityCount = zeroRoiCityCount;
+
+                // 统计全零ROI省份
+                if (!province.hasNonZeroROICity) {
+                    stats.zeroRoiProvinces++;
+                }
+            });
+
+            // 重置当前选择
+            currentSelection = {
+                province: null,
+                city: null,
+                plan: null
+            };
+
+            // 渲染省份表格
+            renderProvinceTable();
+            clearCityTable();
+            clearPlanTable();
+        }
+
+        // 更新统计数据显示
+        function updateStatsDisplay() {
+            totalProvincesEl.textContent = stats.totalProvinces;
+            zeroRoiProvincesEl.textContent = stats.zeroRoiProvinces;
+            totalProblemCitiesEl.textContent = stats.totalProblemCities;
+            totalProblemPlansEl.textContent = stats.totalProblemPlans;
+        }
+
+        // 文本标准化
+        function normalizeText(text) {
+            if (text === null || text === undefined) return '未知';
+            return text.toString()
+                .trim()
+                .replace(/\s+/g, '')
+                .replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '')
+                .replace(/市$/, '')
+                .replace(/省$/, '');
+        }
+
+        // 数字解析
+        function parseNumber(value, defaultValue = 0) {
+            if (value === null || value === undefined || value === '' || isNaN(value)) {
+                return defaultValue;
+            }
+            
+            if (typeof value === 'string') {
+                value = value.replace(/,/g, '').trim();
+                if (value === '') return defaultValue;
+            }
+            
+            const num = parseFloat(value);
+            return isNaN(num) ? defaultValue : num;
+        }
+
+        // 渲染省份表格
+        function renderProvinceTable() {
+            provinceTableBody.innerHTML = '';
+            
+            const provinces = Object.values(dataStore.provinces)
+                .sort((a, b) => b.zeroRoiCityCount - a.zeroRoiCityCount);
+            
+            if (provinces.length === 0) {
+                provinceTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="2" class="no-data">
+                            <i class="fas fa-info-circle"></i>
+                            <div>暂无符合条件的数据</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            provinces.forEach(province => {
+                const row = document.createElement('tr');
+                if (currentSelection.province === province.name) {
+                    row.classList.add('selected');
+                }
+                
+                // 全零ROI省份标红
+                const allZeroROI = !province.hasNonZeroROICity;
+                row.innerHTML = `
+                    <td class="${allZeroROI ? 'all-zero-roi' : ''}">${province.name}</td>
+                    <td>${province.zeroRoiCityCount}</td>
+                `;
+                
+                row.addEventListener('click', () => {
+                    document.querySelectorAll('#provinceTableBody tr.selected')
+                        .forEach(r => r.classList.remove('selected'));
+                    row.classList.add('selected');
+                    
+                    currentSelection.province = province.name;
+                    currentSelection.city = null;
+                    currentSelection.plan = null;
+                    
+                    showCitiesForProvince(province.name);
+                });
+                
+                provinceTableBody.appendChild(row);
+            });
+        }
+
+        // 显示选中省份的城市
+        function showCitiesForProvince(provinceName) {
+            const province = dataStore.provinces[provinceName];
+            if (!province) return;
+            
+            // 获取并排序该省份的问题城市
+            const cities = Object.values(province.cities)
+                .filter(city => city.totalCost > 10 && city.zeroROIPlans.length > 0)
+                .sort((a, b) => b.zeroROIPlansCount - a.zeroROIPlansCount);
+            
+            renderCityTable(cities);
+            clearPlanTable();
+            // 清空当前计划ID列表并禁用复制按钮
+            currentPlanIds = [];
+            copyIdsBtn.disabled = true;
+        }
+
+        // 渲染城市表格
+        function renderCityTable(cities) {
+            cityTableBody.innerHTML = '';
+            
+            if (!currentSelection.province) {
+                cityTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="no-data">
+                            <i class="fas fa-hand-pointer"></i>
+                            <div>请先选择一个省份</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            if (cities.length === 0) {
+                cityTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="no-data">
+                            <i class="fas fa-check-circle"></i>
+                            <div>该省份没有符合条件的0投产比城市</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            cities.forEach(city => {
+                const row = document.createElement('tr');
+                // 判断是否为0投产比城市，如果是则添加高亮类
+                const isZeroRoi = city.avgROI === 0;
+                if (isZeroRoi) {
+                    row.classList.add('zero-roi-city');
+                }
+                // 添加选中状态
+                if (currentSelection.city === city.name) {
+                    row.classList.add('selected');
+                }
+                
+                row.innerHTML = `
+                    <td>${city.name}</td>
+                    <td>${city.totalCost.toFixed(2)}</td>
+                    <td>${city.avgROI.toFixed(2)}</td>
+                    <td>${city.zeroROIPlansCount}</td>
+                `;
+                
+                row.addEventListener('click', () => {
+                    document.querySelectorAll('#cityTableBody tr.selected')
+                        .forEach(r => r.classList.remove('selected'));
+                    row.classList.add('selected');
+                    
+                    currentSelection.city = city.name;
+                    currentSelection.plan = null;
+                    
+                    showPlansForCity(currentSelection.province, city.name);
+                });
+                
+                cityTableBody.appendChild(row);
+            });
+        }
+
+        // 显示选中城市的计划ID
+        function showPlansForCity(provinceName, cityName) {
+            const province = dataStore.provinces[provinceName];
+            if (!province) return;
+            
+            const city = province.cities[cityName];
+            if (!city) return;
+            
+            // 显示该城市的0投产比计划
+            renderPlanTable(city.zeroROIPlans);
+        }
+
+        // 渲染计划ID表格
+        function renderPlanTable(plans) {
+            planTableBody.innerHTML = '';
+            // 重置当前计划ID列表
+            currentPlanIds = [];
+            
+            if (!currentSelection.province) {
+                planTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="3" class="no-data">
+                            <i class="fas fa-hand-pointer"></i>
+                            <div>请先选择一个省份</div>
+                        </td>
+                    </tr>
+                `;
+                copyIdsBtn.disabled = true;
+                return;
+            }
+            
+            if (!currentSelection.city) {
+                planTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="3" class="no-data">
+                            <i class="fas fa-hand-pointer"></i>
+                            <div>请先选择一个城市</div>
+                        </td>
+                    </tr>
+                `;
+                copyIdsBtn.disabled = true;
+                return;
+            }
+            
+            if (!plans || plans.length === 0) {
+                planTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="3" class="no-data">
+                            <i class="fas fa-check-circle"></i>
+                            <div>该城市没有投入产出比为0的计划</div>
+                        </td>
+                    </tr>
+                `;
+                copyIdsBtn.disabled = true;
+                return;
+            }
+            
+            // 收集计划ID用于复制功能
+            currentPlanIds = plans.map(plan => plan.id);
+            // 启用复制按钮
+            copyIdsBtn.disabled = false;
+            
+            plans.forEach(plan => {
+                const row = document.createElement('tr');
+                if (currentSelection.plan === plan.id) {
+                    row.classList.add('selected');
+                }
+                
+                // 在计划ID前添加花费标签
+                row.innerHTML = `
+                    <td>
+                        <span class="plan-cost-badge">¥${plan.totalCost.toFixed(2)}</span>
+                        ${plan.id}
+                    </td>
+                    <td>${plan.totalCost.toFixed(2)}</td>
+                    <td>${plan.avgROI.toFixed(2)}</td>
+                `;
+                
+                row.addEventListener('click', () => {
+                    document.querySelectorAll('#planTableBody tr.selected')
+                        .forEach(r => r.classList.remove('selected'));
+                    row.classList.add('selected');
+                    
+                    currentSelection.plan = plan.id;
+                    showPlanDetails(plan);
+                });
+                
+                planTableBody.appendChild(row);
+            });
+        }
+
+        // 复制所有计划ID到剪贴板，用英文逗号分隔
+        function copyAllPlanIds() {
+            if (currentPlanIds.length === 0) {
+                return;
+            }
+            
+            // 将ID数组转换为用英文逗号分隔的字符串
+            const idsString = currentPlanIds.join(',');
+            
+            // 创建一个临时文本区域用于复制（兼容所有浏览器）
+            const textarea = document.createElement('textarea');
+            textarea.value = idsString;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            
+            // 选择并复制文本
+            textarea.select();
+            textarea.setSelectionRange(0, 99999); // 用于移动设备
+            
+            try {
+                // 执行复制命令
+                const successful = document.execCommand('copy');
+                
+                if (successful) {
+                    showCopySuccessToast();
+                } else {
+                    throw new Error('复制命令执行失败');
+                }
+            } catch (err) {
+                console.error('无法复制内容: ', err);
+                alert('复制失败，请手动复制');
+            } finally {
+                // 清理临时元素
+                document.body.removeChild(textarea);
+            }
+        }
+
+        // 显示复制成功提示
+        function showCopySuccessToast() {
+            // 显示提示框
+            copyToast.classList.add('show');
+            
+            // 3秒后隐藏提示框
+            setTimeout(() => {
+                copyToast.classList.remove('show');
+            }, 3000);
+        }
+
+        // 显示计划详情
+        function showPlanDetails(plan) {
+            // 验证数据关联性
+            if (plan.province !== currentSelection.province || plan.city !== currentSelection.city) {
+                console.warn('数据关联验证失败，正在进行安全处理');
+                // 安全处理：重新筛选确保数据正确
+                const safeDetails = dataStore.allData.filter(row => 
+                    normalizeText(row['省']) === currentSelection.province &&
+                    normalizeText(row['市']) === currentSelection.city &&
+                    row['计划ID'] === plan.id
+                );
+                renderDetailTable(safeDetails);
+            } else {
+                // 直接使用预存的正确数据
+                renderDetailTable(plan.details);
+            }
+            
+            // 更新模态框标题
+            modalTitle.innerHTML = `
+                <i class="fas fa-table"></i> 
+                ${currentSelection.province} - ${currentSelection.city} - 计划ID: ${plan.id} 原始数据
+            `;
+            
+            detailModal.classList.add('active');
+            initDragScroll();
+        }
+
+        // 渲染详情表格
+        function renderDetailTable(data) {
+            detailTableHeader.innerHTML = '';
+            detailTableBody.innerHTML = '';
+            
+            if (!data || data.length === 0) {
+                detailTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="100%" class="no-data">
+                            <i class="fas fa-info-circle"></i>
+                            <div>暂无数据</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // 获取所有列并排序
+            const allColumns = new Set();
+            data.forEach(row => Object.keys(row).forEach(col => allColumns.add(col)));
+            
+            // 常用列优先显示
+            const presetColumns = ['计划ID', '关键词', '匹配模式', '省', '市', '设备', '花费', '投入产出比'];
+            const sortedColumns = [];
+            
+            presetColumns.forEach(col => {
+                if (allColumns.has(col)) {
+                    sortedColumns.push(col);
+                    allColumns.delete(col);
+                }
+            });
+            
+            // 添加剩余列
+            sortedColumns.push(...Array.from(allColumns).sort());
+            
+            // 创建表头
+            const headerRow = document.createElement('tr');
+            sortedColumns.forEach(col => {
+                const th = document.createElement('th');
+                th.textContent = col;
+                headerRow.appendChild(th);
+            });
+            detailTableHeader.appendChild(headerRow);
+            
+            // 创建表格内容
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                sortedColumns.forEach(col => {
+                    const td = document.createElement('td');
+                    const value = row[col];
+                    
+                    if (col === '花费' || col === '投入产出比' || !isNaN(value)) {
+                        td.textContent = parseNumber(value).toFixed(2);
+                    } else {
+                        td.textContent = value || '';
+                    }
+                    
+                    tr.appendChild(td);
+                });
+                detailTableBody.appendChild(tr);
+            });
+        }
+
+        // 清空表格
+        function clearCityTable() {
+            cityTableBody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="no-data">
+                        <i class="fas fa-hand-pointer"></i>
+                        <div>请先选择一个省份</div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function clearPlanTable() {
+            planTableBody.innerHTML = `
+                <tr>
+                    <td colspan="3" class="no-data">
+                        <i class="fas fa-hand-pointer"></i>
+                        <div>请先选择一个城市</div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        // 实现鼠标左键拖拽表格
+        function initDragScroll() {
+            // 确保获取最新的DOM元素
+            detailTableWrapper = document.getElementById('detailTableWrapper');
+            let isDown = false;
+            let startX;
+            let startY;
+            let scrollLeft;
+            let scrollTop;
+
+            // 清除之前的事件监听
+            const newWrapper = detailTableWrapper.cloneNode(true);
+            detailTableWrapper.parentNode.replaceChild(newWrapper, detailTableWrapper);
+            detailTableWrapper = newWrapper;
+            
+            // 鼠标按下：开始拖拽
+            detailTableWrapper.addEventListener('mousedown', (e) => {
+                isDown = true;
+                detailTableWrapper.classList.add('grabbing');
+                startX = e.pageX - detailTableWrapper.offsetLeft;
+                startY = e.pageY - detailTableWrapper.offsetTop;
+                scrollLeft = detailTableWrapper.scrollLeft;
+                scrollTop = detailTableWrapper.scrollTop;
+                detailTableWrapper.style.cursor = 'grabbing';
+            });
+
+            // 鼠标离开：结束拖拽
+            detailTableWrapper.addEventListener('mouseleave', () => {
+                isDown = false;
+                detailTableWrapper.classList.remove('grabbing');
+                detailTableWrapper.style.cursor = 'grab';
+            });
+
+            // 鼠标释放：结束拖拽
+            detailTableWrapper.addEventListener('mouseup', () => {
+                isDown = false;
+                detailTableWrapper.classList.remove('grabbing');
+                detailTableWrapper.style.cursor = 'grab';
+            });
+
+            // 鼠标移动：执行拖拽
+            detailTableWrapper.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - detailTableWrapper.offsetLeft;
+                const y = e.pageY - detailTableWrapper.offsetTop;
+                const walkX = (x - startX) * 1.2;
+                const walkY = (y - startY) * 1.2;
+                detailTableWrapper.scrollLeft = scrollLeft - walkX;
+                detailTableWrapper.scrollTop = scrollTop - walkY;
+            });
+
+            // 默认光标样式
+            detailTableWrapper.style.cursor = 'grab';
+        }
+
+        // 导出优化建议
+        function exportOptimizationSuggestions() {
+            if (Object.keys(dataStore.provinces).length === 0) {
+                alert('没有可导出的数据');
+                return;
+            }
+            
+            const exportData = [];
+            
+            // 遍历所有省份
+            Object.values(dataStore.provinces).forEach(province => {
+                // 遍历省份下的所有城市
+                Object.values(province.cities).forEach(city => {
+                    // 只处理问题城市
+                    if (city.totalCost > 10 && city.zeroROIPlans.length > 0) {
+                        // 遍历城市下的零ROI计划
+                        city.zeroROIPlans.forEach(plan => {
+                            exportData.push({
+                                '省份': province.name,
+                                '市': city.name,
+                                '计划ID': plan.id,
+                                '花费': plan.totalCost,
+                                '投入产出比': plan.avgROI,
+                                '优化建议': '该计划投入产出比为0，建议评估其有效性'
+                            });
+                        });
+                    }
+                });
+            });
+            
+            if (exportData.length === 0) {
+                alert('没有需要优化的计划');
+                return;
+            }
+            
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, '0投产比计划优化建议');
+            
+            const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+            saveExcelFile(excelBuffer, '关键词计划地域优化建议.xlsx');
+        }
+
+        function saveExcelFile(buffer, fileName) {
+            const blob = new Blob([buffer], { type: 'application/octet-stream' });
+            saveAs(blob, fileName);
+        }
+    </script>
+
+
+</body></html>
